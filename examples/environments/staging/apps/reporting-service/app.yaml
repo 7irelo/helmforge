@@ -1,0 +1,25 @@
+app: reporting-service
+env: staging
+targets:
+  - host: 10.0.1.10
+    user: deploy
+    port: 22
+    path: /opt/apps/reporting
+  - host: 10.0.1.11
+    user: deploy
+    path: /opt/apps/reporting
+source:
+  type: compose
+  composeFile: docker-compose.yaml
+deploy:
+  strategy: rolling
+  health:
+    type: http
+    url: http://10.0.1.10:8080/health
+    timeoutSeconds: 30
+policy:
+  allowedBranches:
+    - main
+    - staging
+  requireCleanWorktree: true
+  requireSignedCommits: false
