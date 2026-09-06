@@ -337,6 +337,22 @@ For v1, helmforge does NOT manage secrets directly. Recommended approaches:
 - Use an external decrypt command hook
 - Use a secrets manager that injects env vars at runtime
 
+## Local test harness
+
+`hack/local-harness.sh` stands up a throwaway SSH deploy target so the full
+lifecycle can be exercised without touching a real host. The target is a
+container running sshd with the Docker CLI and compose plugin, talking to the
+host daemon over the mounted socket, so deployed containers appear on the host.
+
+```bash
+./hack/local-harness.sh up     # build image, start target, seed a gitops repo
+./hack/local-harness.sh demo   # plan, apply, status, logs, drift, destroy
+./hack/local-harness.sh down   # remove the container, image and ssh entry
+```
+
+The seeded app deliberately names its compose file `compose.prod.yml` rather
+than `docker-compose.yml`, so that the `-f` handling is actually exercised.
+
 ## Running Tests
 
 ```bash
