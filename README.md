@@ -2,13 +2,20 @@
 
 A GitOps-style deployment engine that deploys apps to remote Linux hosts via SSH using Docker Compose. Uses a Git repository as the source of truth.
 
+## Screenshots
+
+![helmforge CLI - help, init, plan, apply, status, drift, rollback, logs and JSON output](docs/screenshots/helmforge-cli.png)
+
 ## Features
 
+- **init** — Scaffold a new project: `.helmforge.yml`, environments, and starter app config
 - **plan** — Preview deployment actions without executing anything
 - **apply** — Deploy with rolling strategy, health checks, and automatic rollback on failure
 - **status** — View latest release and per-host deployment status
 - **drift** — Detect when remote state diverges from desired Git state
 - **rollback** — Re-deploy a previous release by ID
+- **logs** — Tail `docker compose` logs from the hosts an app runs on
+- **destroy** — Stop and remove a deployed app from its target hosts
 
 ## Install
 
@@ -79,6 +86,31 @@ policy:
 ```
 
 ## Usage
+
+### Init
+
+Scaffold a new project:
+
+```bash
+helmforge init my-app
+```
+
+This creates `.helmforge.yml` plus an `environments/<env>/apps/my-app/` tree
+(with a starter `app.yaml` and `docker-compose.yaml`) for each of `dev`,
+`staging` and `prod`. Use `--env` to choose different environments:
+
+```bash
+helmforge init my-app --env staging,prod
+```
+
+`.helmforge.yml` supplies default values for `--repo`, `--ref`, `--app` and the
+environment, so inside a project directory you can run the short form:
+
+```bash
+helmforge plan --env staging     # instead of repeating --app and --repo
+```
+
+Explicit flags always override the project file.
 
 ### Plan
 
@@ -218,11 +250,44 @@ Roll back to a previous release:
 helmforge rollback -e staging -a reporting-service --to rel-1708617234567890
 ```
 
+### Logs
+
+Tail `docker compose` logs from the hosts an app is deployed to:
+
+```bash
+# Last 100 lines from every service
+helmforge logs --env staging --app reporting-service
+
+# Follow one service until interrupted
+helmforge logs --env staging --service api --follow
+```
+
+When an app has multiple target hosts, each line is prefixed with its host.
+Use `--host` to restrict output to one, and `--tail` to change how much
+history is shown.
+
+### Destroy
+
+Stop and remove a deployed app from its target hosts:
+
+```bash
+helmforge destroy --env staging --app reporting-service
+```
+
+This runs `docker compose down --remove-orphans` on every target and deletes
+the release marker. It prompts before doing anything; pass `--yes` to skip the
+prompt in CI. Add `--volumes` to remove named volumes as well, and `--purge` to
+delete the remote deployment directory.
+
+Release history is left intact, so `helmforge rollback` can still redeploy a
+previous release afterwards.
+
 ### Global Flags
 
 ```
 -v, --verbose    Enable verbose/debug logging
     --log-json   Use structured JSON logging (for CI/log aggregation)
+    --version    Print the helmforge version
 ```
 
 ## Architecture
