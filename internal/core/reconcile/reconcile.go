@@ -130,7 +130,7 @@ func (e *Engine) deployToHost(ctx context.Context, target model.Target, input Ap
 
 	// Step 3: Docker compose pull.
 	logger.Info().Msg("pulling images")
-	pullCmd := fmt.Sprintf("cd %s && docker compose pull", shellQuote(target.Path))
+	pullCmd := fmt.Sprintf("cd %s && %s pull", shellQuote(target.Path), composeCmd(cfg))
 	if out, err := e.Remote.Run(ctx, target, pullCmd); err != nil {
 		hr.Logs = out
 		return failHost(hr, "docker_pull", err)
@@ -138,7 +138,7 @@ func (e *Engine) deployToHost(ctx context.Context, target model.Target, input Ap
 
 	// Step 4: Docker compose up.
 	logger.Info().Msg("starting services")
-	upCmd := fmt.Sprintf("cd %s && docker compose up -d --remove-orphans", shellQuote(target.Path))
+	upCmd := fmt.Sprintf("cd %s && %s up -d --remove-orphans", shellQuote(target.Path), composeCmd(cfg))
 	if out, err := e.Remote.Run(ctx, target, upCmd); err != nil {
 		hr.Logs = out
 		return failHost(hr, "docker_up", err)
@@ -212,6 +212,18 @@ func (e *Engine) CheckDrift(ctx context.Context, target model.Target, desiredSHA
 	result.ActualSHA = marker.CommitSHA
 	result.InSync = marker.CommitSHA == desiredSHA
 	return result
+}
+
+// composeCmd builds the `docker compose` invocation for an app, passing -f so
+// the configured compose file is used rather than whatever Docker would
+// auto-discover in the deploy directory. Docker only looks for compose.yaml or
+// docker-compose.yml on its own, so an app.yaml naming anything else would
+// otherwise be copied across and then quietly ignored.
+func composeCmd(cfg *model.AppConfig) string {
+	if cfg == nil || cfg.Source.ComposeFile == "" {
+		return "docker compose"
+	}
+	return "docker compose -f " + shellQuote(cfg.Source.ComposeFile)
 }
 
 func shellQuote(s string) string {

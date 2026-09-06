@@ -59,7 +59,7 @@ With --follow the output is streamed until interrupted; without it the last
 					if prefix {
 						fmt.Fprintf(out, "==> %s <==\n", target.Host)
 					}
-					cmdStr := composeLogsCommand(target.Path, service, tail, false)
+					cmdStr := composeLogsCommand(cfg, target.Path, service, tail, false)
 					if err := remote.Stream(ctx, target, cmdStr, out, errOut); err != nil {
 						fmt.Fprintf(errOut, "%s: %v\n", target.Host, err)
 					}
@@ -83,7 +83,7 @@ With --follow the output is streamed until interrupted; without it the last
 					if prefix {
 						w = &prefixWriter{w: out, mu: &outMu, prefix: t.Host + " | "}
 					}
-					cmdStr := composeLogsCommand(t.Path, service, tail, true)
+					cmdStr := composeLogsCommand(cfg, t.Path, service, tail, true)
 					if err := remote.Stream(ctx, t, cmdStr, w, errOut); err != nil {
 						fmt.Fprintf(errOut, "%s: %v\n", t.Host, err)
 					}
@@ -106,10 +106,21 @@ With --follow the output is streamed until interrupted; without it the last
 	return cmd
 }
 
+// composeBase is the `docker compose` invocation for an app, including -f so
+// that the configured compose file is the one Docker acts on. Docker only
+// auto-discovers compose.yaml and docker-compose.yml, so an app.yaml naming
+// anything else fails with "no configuration file provided" without this.
+func composeBase(cfg *model.AppConfig) string {
+	if cfg == nil || cfg.Source.ComposeFile == "" {
+		return "docker compose"
+	}
+	return "docker compose -f " + shellQuoteArg(cfg.Source.ComposeFile)
+}
+
 // composeLogsCommand builds the remote docker compose logs invocation.
-func composeLogsCommand(path, service string, tail int, follow bool) string {
+func composeLogsCommand(cfg *model.AppConfig, path, service string, tail int, follow bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "cd %s && docker compose logs --no-color --tail %d", shellQuoteArg(path), tail)
+	fmt.Fprintf(&b, "cd %s && %s logs --no-color --tail %d", shellQuoteArg(path), composeBase(cfg), tail)
 	if follow {
 		b.WriteString(" --follow")
 	}

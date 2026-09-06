@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/7irelo/helmforge/internal/adapters/git"
 	"github.com/7irelo/helmforge/internal/core/model"
@@ -95,13 +96,13 @@ func (p *Planner) Generate(ctx context.Context, input GenerateInput) (*model.Dep
 				Host:        host,
 				Step:        "docker_pull",
 				Description: "Pull latest images",
-				Command:     fmt.Sprintf("cd %s && docker compose pull", remotePath),
+				Command:     fmt.Sprintf("cd %s && %s pull", remotePath, composeCmd(cfg)),
 			},
 			model.PlanAction{
 				Host:        host,
 				Step:        "docker_up",
 				Description: "Start/update services",
-				Command:     fmt.Sprintf("cd %s && docker compose up -d --remove-orphans", remotePath),
+				Command:     fmt.Sprintf("cd %s && %s up -d --remove-orphans", remotePath, composeCmd(cfg)),
 			},
 		)
 
@@ -122,4 +123,14 @@ func (p *Planner) Generate(ctx context.Context, input GenerateInput) (*model.Dep
 	}
 
 	return plan, nil
+}
+
+// composeCmd mirrors the invocation the reconcile engine runs, so a plan shows
+// the command apply will actually execute.
+func composeCmd(cfg *model.AppConfig) string {
+	if cfg == nil || cfg.Source.ComposeFile == "" {
+		return "docker compose"
+	}
+	quoted := "'" + strings.ReplaceAll(cfg.Source.ComposeFile, "'", `'\''`) + "'"
+	return "docker compose -f " + quoted
 }

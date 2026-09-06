@@ -84,7 +84,7 @@ redeploy a previous release afterwards.`,
 			for _, target := range targets {
 				fmt.Fprintf(out, "\n%s: stopping services...\n", target.Host)
 
-				downCmd := fmt.Sprintf("cd %s && docker compose down --remove-orphans", shellQuoteArg(target.Path))
+				downCmd := fmt.Sprintf("cd %s && %s down --remove-orphans", shellQuoteArg(target.Path), composeBase(cfg))
 				if volumes {
 					downCmd += " --volumes"
 				}
