@@ -27,6 +27,13 @@ func NewRollbackCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			if _, err := resolveDefaults(&env, &app, nil, nil); err != nil {
+				return err
+			}
+			if err := requireFlags(map[string]string{"env": env, "app": app}); err != nil {
+				return err
+			}
+
 			// Open store and find the target release.
 			st, err := store.NewSQLiteStore()
 			if err != nil {
@@ -112,8 +119,6 @@ func NewRollbackCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&app, "app", "a", "", "Application name (required)")
 	cmd.Flags().StringVar(&toRelease, "to", "", "Release ID to roll back to (required)")
 
-	cmd.MarkFlagRequired("env")
-	cmd.MarkFlagRequired("app")
 	cmd.MarkFlagRequired("to")
 
 	return cmd

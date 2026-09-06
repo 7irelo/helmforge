@@ -21,6 +21,13 @@ func NewPlanCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			if _, err := resolveDefaults(&env, &app, &repo, &ref); err != nil {
+				return err
+			}
+			if err := requireFlags(map[string]string{"env": env, "app": app, "repo": repo}); err != nil {
+				return err
+			}
+
 			planner := &plan.Planner{Git: git.NewClient()}
 			p, err := planner.Generate(ctx, plan.GenerateInput{
 				Env:  env,
@@ -48,12 +55,9 @@ func NewPlanCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&env, "env", "e", "", "Environment (required)")
 	cmd.Flags().StringVarP(&app, "app", "a", "", "Application name (required)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repository URL (required)")
-	cmd.Flags().StringVar(&ref, "ref", "main", "Git ref (branch/tag/sha)")
+	cmd.Flags().StringVar(&ref, "ref", "", "Git ref (branch/tag/sha) (default \"main\")")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output plan as JSON")
-
-	cmd.MarkFlagRequired("env")
-	cmd.MarkFlagRequired("app")
-	cmd.MarkFlagRequired("repo")
+	bindOutputFlag(cmd, &jsonOutput)
 
 	return cmd
 }

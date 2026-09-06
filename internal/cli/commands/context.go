@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/7irelo/helmforge/internal/adapters/git"
 	"github.com/7irelo/helmforge/internal/core/model"
 	"github.com/7irelo/helmforge/internal/core/project"
 	"github.com/7irelo/helmforge/internal/core/validate"
+	"github.com/spf13/cobra"
 )
 
 // resolveDefaults fills empty flag values from the nearest .helmforge.yml, so
@@ -55,6 +57,34 @@ func requireFlags(pairs map[string]string) error {
 		return fmt.Errorf("%s is required (or set it in %s)", missing[0], project.FileName)
 	default:
 		return fmt.Errorf("%v are required (or set them in %s)", missing, project.FileName)
+	}
+}
+
+// bindOutputFlag adds `--output <format>` as an alias for `--json`, matching the
+// spelling most CI tooling expects. Valid values are "text" (the default) and
+// "json"; passing --json is equivalent to --output json.
+func bindOutputFlag(cmd *cobra.Command, jsonOutput *bool) {
+	var output string
+
+	cmd.Flags().StringVarP(&output, "output", "o", "", `Output format: "text" or "json"`)
+
+	previous := cmd.PreRunE
+	cmd.PreRunE = func(c *cobra.Command, args []string) error {
+		switch strings.ToLower(strings.TrimSpace(output)) {
+		case "":
+			// Not passed; leave --json alone.
+		case "json":
+			*jsonOutput = true
+		case "text":
+			*jsonOutput = false
+		default:
+			return fmt.Errorf(`invalid --output value %q: expected "text" or "json"`, output)
+		}
+
+		if previous != nil {
+			return previous(c, args)
+		}
+		return nil
 	}
 }
 

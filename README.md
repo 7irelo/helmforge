@@ -290,6 +290,13 @@ previous release afterwards.
     --version    Print the helmforge version
 ```
 
+Read commands (`plan`, `status`, `drift`) also accept `-o` / `--output` with
+`text` or `json`, equivalent to `--json`:
+
+```bash
+helmforge plan --env production --output json
+```
+
 ## Architecture
 
 ```

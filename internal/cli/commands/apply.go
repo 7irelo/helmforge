@@ -28,6 +28,13 @@ func NewApplyCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			if _, err := resolveDefaults(&env, &app, &repo, &ref); err != nil {
+				return err
+			}
+			if err := requireFlags(map[string]string{"env": env, "app": app, "repo": repo}); err != nil {
+				return err
+			}
+
 			// Acquire deploy lock.
 			lk, err := lock.Acquire(env, app)
 			if err != nil {
@@ -98,12 +105,8 @@ func NewApplyCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&env, "env", "e", "", "Environment (required)")
 	cmd.Flags().StringVarP(&app, "app", "a", "", "Application name (required)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repository URL (required)")
-	cmd.Flags().StringVar(&ref, "ref", "main", "Git ref (branch/tag/sha)")
+	cmd.Flags().StringVar(&ref, "ref", "", "Git ref (branch/tag/sha) (default \"main\")")
 	cmd.Flags().IntVar(&maxParallel, "max-parallel", 1, "Max parallel host deploys")
-
-	cmd.MarkFlagRequired("env")
-	cmd.MarkFlagRequired("app")
-	cmd.MarkFlagRequired("repo")
 
 	return cmd
 }

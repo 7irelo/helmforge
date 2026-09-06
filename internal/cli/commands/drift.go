@@ -26,8 +26,15 @@ func NewDriftCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			if repo == "" {
-				return fmt.Errorf("--repo is required for drift check")
+			if _, err := resolveDefaults(&env, nil, &repo, &ref); err != nil {
+				return err
+			}
+			if err := requireFlags(map[string]string{"env": env, "repo": repo}); err != nil {
+				return err
+			}
+
+			if ref == "" {
+				ref = "main"
 			}
 
 			gitClient := git.NewClient()
@@ -128,12 +135,10 @@ func NewDriftCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&env, "env", "e", "", "Environment (required)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repository URL (required)")
-	cmd.Flags().StringVar(&ref, "ref", "main", "Git ref (branch/tag/sha)")
+	cmd.Flags().StringVar(&ref, "ref", "", "Git ref (branch/tag/sha) (default \"main\")")
 	cmd.Flags().BoolVar(&all, "all", false, "Check all apps in environment")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "JSON output")
-
-	cmd.MarkFlagRequired("env")
-	cmd.MarkFlagRequired("repo")
+	bindOutputFlag(cmd, &jsonOutput)
 
 	return cmd
 }

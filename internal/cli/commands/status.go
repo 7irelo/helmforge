@@ -25,6 +25,13 @@ func NewStatusCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			if _, err := resolveDefaults(&env, &app, &repo, &ref); err != nil {
+				return err
+			}
+			if err := requireFlags(map[string]string{"env": env, "app": app}); err != nil {
+				return err
+			}
+
 			// Open store.
 			st, err := store.NewSQLiteStore()
 			if err != nil {
@@ -100,11 +107,9 @@ func NewStatusCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&env, "env", "e", "", "Environment (required)")
 	cmd.Flags().StringVarP(&app, "app", "a", "", "Application name (required)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repository URL (for drift check)")
-	cmd.Flags().StringVar(&ref, "ref", "main", "Git ref (branch/tag/sha)")
+	cmd.Flags().StringVar(&ref, "ref", "", "Git ref (branch/tag/sha) (default \"main\")")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "JSON output")
-
-	cmd.MarkFlagRequired("env")
-	cmd.MarkFlagRequired("app")
+	bindOutputFlag(cmd, &jsonOutput)
 
 	return cmd
 }
